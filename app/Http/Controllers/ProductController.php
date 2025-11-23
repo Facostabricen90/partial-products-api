@@ -15,7 +15,9 @@ class ProductController extends Controller
     public function index()
     {
     
-        $products = Product::with('category')->get();
+        $products = Product::with('category')
+                ->orderBy('id', 'asc')
+                ->get();
         return Inertia::render('Products/Index', [
             'products' => $products,
             'message' => session('message') ?? null,
@@ -25,7 +27,7 @@ class ProductController extends Controller
     public function create()
     {
         return Inertia::render('Products/Create', [
-            'categories' => Category::all(),
+            'categories' => Category::where('category_state', true)->get(),
         ]);
     }
 
