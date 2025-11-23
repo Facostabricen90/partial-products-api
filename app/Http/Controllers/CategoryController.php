@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
-use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class CategoryController extends Controller
 {
@@ -14,7 +14,18 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        return Category::paginate();
+        return Inertia::render('Categories/Index', [
+            'categories' => Category::all(),
+            'message' => session('message') ?? null,
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        return Inertia::render('Categories/Create');
     }
 
     /**
@@ -22,9 +33,17 @@ class CategoryController extends Controller
      */
     public function store(StoreCategoryRequest $request)
     {
-        $category = new Category($request->validated());
-        $category->save();
-        return response()->json(['success' => true, 'category' => $category], 201);
+        $validated = $request->validate([
+        'category_name' => 'required|string|max:255',
+        'category_description' => 'required|string|max:255',
+        'category_classification' => 'required|string|max:255',
+        'category_state' => 'required|boolean',
+        ]);
+
+        Category::create($validated);
+
+        return redirect()->route('categories.index')
+            ->with('message', 'Category created successfully.');
     }
 
     /**
@@ -32,18 +51,37 @@ class CategoryController extends Controller
      */
     public function show(Category $category)
     {
-        return response()->json(['success' => true, 'category' => $category->load('products')], 200);
+        return Inertia::render('Categories/Show', [
+            'category' => $category->load('products')
+        ]);
     }
+
+    /**
+ * Show the form for editing the specified resource.
+ */
+public function edit(Category $category)
+{
+    return Inertia::render('Categories/Edit', [
+        'category' => $category
+    ]);
+}
 
     /**
      * Update the specified resource in storage.
      */
     public function update(UpdateCategoryRequest $request, Category $category)
     {
-        if ($category->update($request->validated())) {
-            return response()->json(['success' => true, 'category' => $category], 200);
-        }
-        return response()->json(['success' => false, 'category' => $category], 400);
+        $validated = $request->validate([
+        'category_name' => 'required|string|max:255',
+        'category_description' => 'required|string|max:255',
+        'category_classification' => 'required|string|max:255',
+        'category_state' => 'required|boolean',
+    ]);
+
+    $category->update($validated);
+
+    return redirect()->route('categories.index')
+        ->with('message', 'Category updated successfully.');
     }
 
     /**
@@ -51,10 +89,10 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        if ($category->delete()) {
-            return response()->json(['success' => true]);
-        }
-        return response()->json(['success' => false]);
+        $category->delete();
+
+        return redirect()->route('categories.index')
+            ->with('message', 'Category deleted successfully.');
     }
 
     public function getActiveCategories()

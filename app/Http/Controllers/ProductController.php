@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use \Illuminate\Http\Response;
 use App\Http\Requests\ProductRequest;
+use Inertia\Inertia;
+use App\Models\Category;
 
 class ProductController extends Controller
 {
@@ -13,7 +14,19 @@ class ProductController extends Controller
      */
     public function index()
     {
-        return Product::with('category')->get();
+    
+        $products = Product::with('category')->get();
+        return Inertia::render('Products/Index', [
+            'products' => $products,
+            'message' => session('message') ?? null,
+        ]);
+    }
+
+    public function create()
+    {
+        return Inertia::render('Products/Create', [
+            'categories' => Category::all(),
+        ]);
     }
 
     /**
@@ -21,17 +34,20 @@ class ProductController extends Controller
      */
     public function store(ProductRequest $request)
     {
-        $product = new Product;
-        $product->product_name = $request->input('product_name');
-        $product->product_description = $request->input('product_description');
-        $product->product_price = $request->input('product_price');
-        $product->product_stock = $request->input('product_stock');
-        $product->product_status = $request->input('product_status');
-        $product->barcode = $request->input('barcode');
-        $product->fk_category_product = $request->input('fk_category_product');
-        $product->save();
+        $request->validate([
+        'product_name' => 'required|string|max:255',
+        'product_description' => 'nullable|string',
+        'product_price' => 'required|numeric|min:0',
+        'product_stock' => 'required|integer|min:0',
+        'product_status' => 'required|boolean',
+        'fk_category_product' => 'required|exists:categories,id',
+        ]);
 
-        return $product->load('category');
+        Product::create($request->all());
+
+        return redirect()
+            ->route('products.index')
+            ->with('message', 'Product created successfully.');
     }
 
     /**
@@ -39,18 +55,40 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        return $product->load('category');
+        return Inertia::render('Products/Show', [
+            'product' => $product->load('category')
+        ]);
     }
+
+    /**
+ * Show the form for editing the specified resource.
+ */
+public function edit(Product $product)
+{
+    return Inertia::render('Products/Edit', [
+        'product' => $product,
+        'categories' => Category::where('category_state', true)->get()
+    ]);
+}
 
     /**
      * Update the specified resource in storage.
      */
     public function update(ProductRequest $request, Product $product)
     {
-        if ($product->update($request->all())) {
-            return response()->json(['success' => true, 'product' => $product]);
-        }
-        return response()->json(['success' => false]);
+        $validated = $request->validate([
+        'product_name' => 'required|string|max:255',
+        'product_description' => 'nullable|string',
+        'product_price' => 'required|numeric|min:0',
+        'product_stock' => 'required|integer|min:0',
+        'product_status' => 'required|boolean',
+        'fk_category_product' => 'required|exists:categories,id',
+    ]);
+
+    $product->update($validated);
+
+    return redirect()->route('products.index')
+        ->with('message', 'Product updated successfully.');
     }
 
     /**
@@ -58,9 +96,9 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        if ($product->delete()) {
-            return response()->json(['success' => true]);
-        }
-        return response()->json(['success' => false]);
+        $product->delete();
+
+        return redirect()->route('products.index')
+            ->with('message', 'Product deleted successfully.');
     }
 }
